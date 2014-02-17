@@ -1,0 +1,56 @@
+asha (2.0.0-8) unstable; urgency=low
+
+  * svn commit 69
+  * mods to shadow rhino task
+
+ -- root <root@debdevel.aelintra.com>  Sat, 15 Feb 2014 17:07:26 +0000
+
+asha (2.0.0-7) unstable; urgency=low
+
+  * svn commit 68
+  * mods to shadow rhino task
+
+ -- root <root@debdevel.aelintra.com>  Fri, 14 Feb 2014 17:07:26 +0000
+
+asha (2.0.0-6) unstable; urgency=low
+
+  * svn commit 67
+  * mods to crm script to wait for cluster to come up
+
+ -- root <root@debdevel.aelintra.com>  Sat, 01 Feb 2014 17:07:26 +0000
+
+asha (2.0.0-5) unstable; urgency=low
+
+  * svn commit 66
+  * mods to scripts to make them idempotent
+
+ -- root <root@debdevel.aelintra.com>  Wed, 22 Jan 2014 17:07:26 +0000
+
+asha (2.0.0-4) unstable; urgency=low
+
+  * svn commit 58
+  * mods to scripts to make them idempotent
+
+ -- root <root@debdevel.aelintra.com>  Wed, 22 Jan 2014 17:07:26 +0000
+
+asha (2.0.0-3) unstable; urgency=low
+
+  * svn commit 55
+  * second fix - mods to corosync make-live
+
+ -- root <root@debdevel.aelintra.com>  Wed, 22 Jan 2014 17:07:26 +0000
+
+asha (2.0.0-2) unstable; urgency=low
+
+  * svn commit 54
+  * First fix - mods to apache entry in CIB
+
+ -- root <root@debdevel.aelintra.com>  Wed, 22 Jan 2014 17:07:26 +0000
+
+asha (2.0.0-1) unstable; urgency=low
+
+
+  * svn commit 49
+  * Initial release 
+
+ -- root <root@debdevel.aelintra.com>  Sun, 05 Jan 2014 17:07:26 +0000

@@ -1,0 +1,4 @@
+#!/bin/sh
+exec 2>&1
+logger Starting Asterisk Shadow task
+exec nice -n 0 php /opt/asha/php/shadow.php

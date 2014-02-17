@@ -1,0 +1,26 @@
+#!/bin/bash
+confirm () {
+    # call with a prompt string or use a default
+    read -r -p "${1:-Are you sure? [Y/n]} " response
+    case $response in
+        [nN][oO]|[nN]) 
+	    exit 4 
+            ;;
+        *)
+	    return 0
+            ;;
+    esac
+a
+}
+# main line
+
+for file in `ls /opt/asha/scripts` ; do
+confirm "Ready to run $file - confirm? [Y/n]" 
+if [  "$?" -ne "0" ] ; then
+	echo "exiting"
+	exit 4
+fi
+sh /opt/asha/scripts/$file
+done
+echo "Done"
+

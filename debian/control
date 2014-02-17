@@ -1,0 +1,16 @@
+Source: asha
+Section: network
+Priority: extra
+Maintainer: CoCo <admin@.aelintra.com>
+Build-Depends: debhelper (>= 8.0.0)
+Standards-Version: 3.9.3
+Homepage: www.aelintra.com
+#Vcs-Git: git://git.debian.org/collab-maint/asha.git
+#Vcs-Browser: http://git.debian.org/?p=collab-maint/asha.git;a=summary
+
+Package: asha
+Architecture: all
+Depends: ${misc:Depends},debconf (>= 0.2.26),pacemaker,drbd-utils,sipsak
+Recommends: asterisk,mysql
+Description: ASHA - a cluster builder for sail and asterisk
+ A shorthand cluster builder for Pacemaker/Corosync Asterisk clusters.

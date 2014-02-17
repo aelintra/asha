@@ -1,0 +1,2 @@
+UPDATE globals SET bindaddr='ON';
+

@@ -1,0 +1,76 @@
+#!/bin/sh
+ 
+# Exit on error
+set -e
+
+# Source debconf library.
+. /usr/share/debconf/confmodule
+
+# Only allow a very limited reconfigure 
+
+if [ "$1" = "reconfigure" ]; then
+	db_set asha/reconfiguring true
+	db_get asha/newcluster 
+	if [ "$RET" = "true" ] ; then
+		db_input high asha/clusteralert || true
+		db_input high asha/siteid || true
+		db_go || true		
+	fi
+	exit 0			
+fi
+
+
+db_input high asha/newcluster || true
+db_input high asha/clusterip || true
+
+
+# check available NICs
+NUMNICS=`lspci | egrep -i  'network|ethernet' | wc -l`
+if [ "$NUMNICS" -gt "1" ]; then
+	db_input high asha/usenic1 || true
+	db_go || true	
+
+# tailor questions based upon number of NICs
+	db_get asha/usenic1
+	if [ "$RET" = "true" ]; then
+		db_input high asha/2nanodeip || true
+		db_input high asha/2nbnodeip || true
+		db_input high asha/bnodename || true 
+	else
+		db_input high asha/1nbnodeip || true
+		db_input high asha/bnodename || true
+	fi
+else
+	db_input high asha/1nbnodeip || true
+	db_input high asha/bnodename || true	
+fi
+
+db_input high asha/drbddev || true
+if db_go; then
+	db_get asha/drbddev 
+	for i in 1 2 3 
+	do
+		PART=`fdisk -l | grep "$RET" | wc -l`
+		if [  "$PART" -eq "0" ]; then
+			db_input high asha/drbddeverr || true
+			db_input high asha/drbddev || true
+			db_go
+			db_get asha/drbddev && DRBDDEV=$RET
+		else
+			break
+		fi
+	done
+fi
+
+db_get asha/newcluster
+if [ "$RET" = "true" ]; then
+	db_input high asha/clusteralert || true
+	db_input high asha/siteid || true
+fi
+db_input high asha/done || true
+db_go
+
+
+
+
+ 

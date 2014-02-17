@@ -1,0 +1,29 @@
+resource r0 {
+        protocol C;
+	syncer {
+		rate 30M;
+	}
+        startup {
+                wfc-timeout  15;
+                degr-wfc-timeout 60;
+        }
+        net {
+                cram-hmac-alg sha1;
+                shared-secret "secret";
+				after-sb-0pri discard-least-changes;
+				after-sb-1pri consensus;
+				after-sb-2pri disconnect;
+        }
+        on ANODENAME {
+                device /dev/drbd0;
+                disk DEVICE;
+                address ANODEIP:7788;
+                meta-disk internal;
+        }
+        on BNODENAME {
+                device /dev/drbd0;
+                disk DEVICE;
+                address BNODEIP:7788;
+                meta-disk internal;
+        }
+}

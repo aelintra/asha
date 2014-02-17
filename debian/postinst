@@ -1,0 +1,189 @@
+#!/bin/bash
+# postinst script for asha
+#
+# see: dh_installdeb(1)
+
+set -e
+
+# Source debconf library.
+. /usr/share/debconf/confmodule
+
+# summary of how this script can be called:
+#        * <postinst> `configure' <most-recently-configured-version>
+#        * <old-postinst> `abort-upgrade' <new version>
+#        * <conflictor's-postinst> `abort-remove' `in-favour' <package>
+#          <new-version>
+#        * <postinst> `abort-remove'
+#        * <deconfigured's-postinst> `abort-deconfigure' `in-favour'
+#          <failed-install-package> <version> `removing'
+#          <conflicting-package> <version>
+# for details, see http://www.debian.org/doc/debian-policy/ or
+# the debian-policy package
+
+# Function calculates number of bit in a netmask
+#
+mask2cidr() {
+    nbits=0
+    IFS=.
+    for dec in $1 ; do
+        case $dec in
+            255) let nbits+=8;;
+            254) let nbits+=7;;
+            252) let nbits+=6;;
+            248) let nbits+=5;;
+            240) let nbits+=4;;
+            224) let nbits+=3;;
+            192) let nbits+=2;;
+            128) let nbits+=1;;
+            0);;
+            *) echo "Error: $dec is not recognised" >&2; exit 1
+        esac
+    done
+    echo "$nbits"
+}
+
+db_get asha/reconfiguring && reconfiguring="$RET"
+db_reset asha/reconfiguring
+	
+case "$1" in
+    configure)
+		if [[ "$reconfiguring" = "true" ]] || [[  -z "$2" ]]; then		
+		#  clear the old configs (if any)
+			rm -rf /opt/asha/cache/corosync/*
+			rm -rf /opt/asha/cache/drbd.d/*
+			rm -rf /opt/asha/cache/interfaces.d/*
+			rm -rf /opt/asha/scripts/pacemaker_crm.sh
+			
+		# get our debconf variables
+			db_get asha/newcluster
+			PRIMARY=$RET;	
+			echo "PRIMARY=$PRIMARY" > /opt/asha/asha.conf
+			db_get asha/usenic1
+			USENIC1=$RET;			
+			echo "USENIC1=$USENIC1" >> /opt/asha/asha.conf	
+			db_get asha/clusterip
+			CLUSTERIP=$RET;
+			echo "CLUSTERIP=$CLUSTERIP" >> /opt/asha/asha.conf
+			db_get asha/clusteralert
+			CLUSTERALERT=$RET;
+			echo "CLUSTERALERT=$CLUSTERALERT" >> /opt/asha/asha.conf
+			db_get asha/siteid
+			SITEID=$RET;
+			echo "SITEID=$SITEID" >> /opt/asha/asha.conf				
+			if [ "$USENIC1" = "true" ]; then
+				db_get asha/2nanodeip
+				ANODEIP=$RET
+				db_get asha/2nbnodeip
+				BNODEIP=$RET
+			else
+				ANODEIP=`ifconfig eth0 | awk '/inet addr:/{ print $2;} ' | cut -c6-`
+				db_get asha/1nbnodeip
+				BNODEIP=$RET
+			fi
+			echo "ANODEIP=$ANODEIP" >> /opt/asha/asha.conf
+			echo "BNODEIP=$BNODEIP" >> /opt/asha/asha.conf
+			ANODENAME=`uname -n`	
+			echo "ANODENAME=$ANODENAME" >> /opt/asha/asha.conf
+			db_get asha/bnodename
+			BNODENAME=$RET
+			echo "BNODENAME=$BNODENAME" >> /opt/asha/asha.conf
+			db_get asha/drbddev
+			DRBDDEV=$RET
+			echo "DRBDDEV=$DRBDDEV" >> /opt/asha/asha.conf
+							
+		# calculate local IP, MASK and NETWORK address
+			if [ "$USENIC1" = "true" ]; then
+				MASK="255.255.255.0"
+				IP="$ANODEIP"
+				CIDR="24"
+				cp -f /opt/asha/templates/eth1.tmpl /opt/asha/cache/interfaces.d/eth1
+				echo "address $IP" >> /opt/asha/cache/interfaces.d/eth1
+			else
+				IP=`ifconfig eth0 | awk '/inet addr:/{ print $2;} ' | cut -c6-`
+				MASK=`ifconfig eth0 | awk '/Mask:/{ print $4;} ' | cut -c6-`
+				CIDR=$(mask2cidr $MASK)
+			fi
+			IFS=. read -r i1 i2 i3 i4 <<< "$IP"
+			IFS=. read -r m1 m2 m3 m4 <<< "$MASK"
+			NET=`printf "%d.%d.%d.%d\n" "$((i1 & m1))" "$(($i2 & m2))" "$((i3 & m3))" "$((i4 & m4))"`
+			echo "CLUSTERNET=$NET" >> /opt/asha/asha.conf
+			echo "IP=$IP" >> /opt/asha/asha.conf
+			
+#			echo "IP=$IP MASK=$MASK NETSTART=$NET" >&2	
+				
+		# NB file generators use pipe delimiter in sed because some variables contains slashes
+		
+			if [ -z "$2" ]; then
+		# generate corosync.conf for this cluster
+					
+				cp -f /opt/asha/templates/corosync.conf.tmpl /opt/asha/cache/corosync/corosync.conf			
+				sed -i "s|NETIP|$NET|g" /opt/asha/cache/corosync/corosync.conf
+			
+		# generate drbd.d/r0.res for this cluster
+				PART=`fdisk -l | grep "$DRBDDEV" | wc -l`
+				if [  "$PART" -eq "0" ]; then
+					echo "The partition $DRBDDEV does not exist on this server!!" 
+					echo "...DRBD will not be configured"
+					[ -e /opt/asha/scripts/*bring_up_drbd_first_time.sh ] && rm /opt/asha/scripts/*bring_up_drbd_first_time.sh
+					[ -e /opt/asha/scripts/*initial_copy_to_drbd.sh ] && rm /opt/asha/scripts/*initial_copy_to_drbd.sh
+					sleep 5
+				else
+					cp -f /opt/asha/templates/r0.res.tmpl /opt/asha/cache/drbd.d/r0.res
+					sed -i "s|ANODENAME|$ANODENAME|g" /opt/asha/cache/drbd.d/r0.res			
+					sed -i "s|ANODEIP|$ANODEIP|g" /opt/asha/cache/drbd.d/r0.res
+					sed -i "s|BNODENAME|$BNODENAME|g" /opt/asha/cache/drbd.d/r0.res
+					sed -i "s|BNODEIP|$BNODEIP|g" /opt/asha/cache/drbd.d/r0.res
+					sed -i "s|DEVICE|$DRBDDEV|g" /opt/asha/cache/drbd.d/r0.res
+				fi	
+			fi
+				
+		# generate crm bash script
+			if [ "$PRIMARY" = "true" ]; then
+				cp -f /opt/asha/templates/crm.sh.tmpl /opt/asha/scripts/70-pacemaker_crm.sh
+				sed -i "s|CLUSTERIP|$CLUSTERIP|g" /opt/asha/scripts/70-pacemaker_crm.sh
+				sed -i "s|CLUSTERALERT|$CLUSTERALERT|g" /opt/asha/scripts/70-pacemaker_crm.sh
+				sed -i "s|SITEID|$SITEID|g" /opt/asha/scripts/70-pacemaker_crm.sh
+				sed -i "s|CIDR|$CIDR|g" /opt/asha/scripts/70-pacemaker_crm.sh
+			fi
+			
+		# set flags for HA in sark  (
+			if [ -e /opt/sark/db/sark.db ]; then
+				echo "UPDATE globals SET haclusterip='"$CLUSTERIP"';" > /opt/asha/amacs/zasha22	
+				echo "UPDATE globals SET hausecluster='YES';" >> /opt/asha/amacs/zasha22	
+			fi
+			
+		# rhino SPF
+			echo "RHINOSPF=NO" >> /opt/asha/asha.conf
+			echo "RHINOUSB=/dev/ttyUSB0" >> /opt/asha/asha.conf
+			chmod +x /opt/asha/service/shadow/run
+		
+		# If this is not a new cluster remove the copy and service gubbins
+			if [ ! "$PRIMARY" = "true" ]; then
+				rm -rf /opt/asha/service
+				rm /opt/asha/scripts/*initial_copy_to_drbd.sh
+			fi					
+		fi
+		# remove scripts that can only ever run once	
+		if [[ "$reconfiguring" = "true" ]] || [[ "$2" ]]; then	
+			[ -e /opt/asha/scripts/*insert_pacemaker_drbd_sark_rules.sh ] && rm /opt/asha/scripts/*insert_pacemaker_drbd_sark_rules.sh
+			[ -e /opt/asha/scripts/*bring_up_drbd_first_time.sh ] && rm /opt/asha/scripts/*bring_up_drbd_first_time.sh
+			[ -e /opt/asha/scripts/*initial_copy_to_drbd.sh ] && rm /opt/asha/scripts/*initial_copy_to_drbd.sh
+			[ -e /opt/asha/scripts/*make_corosync_live.sh ] && rm /opt/asha/scripts/*make_corosync_live.sh
+		fi			
+    ;;
+
+    abort-upgrade|abort-remove|abort-deconfigure)
+    ;;
+
+    *)
+        echo "postinst called with unknown argument \`$1'" >&2
+        exit 1
+    ;;
+esac
+
+# dh_installdeb will replace this with shell code automatically
+# generated by other debhelper scripts.
+
+#DEBHELPER#
+
+exit 0

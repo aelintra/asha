@@ -1,0 +1,109 @@
+Template: asha/clusterip
+Type: string
+Default: 192.168.1.250
+Description: Cluster IP address?
+ Enter the IP address of your cluster. This is sometimes known as the Cluster Virtual address. It will
+ be the IP address from which your cluster delivers services to your local subnet.
+ It should be an unused IP, on the same subnet as eth0.
+
+Template: asha/reconfiguring
+Type: boolean
+Default: false
+
+Template: asha/newcluster
+type: boolean
+default: false
+Description: Are you defining the first node of a brand new cluster?
+ ASHA needs to know if this is a brand new cluster or if you are adding a node to an existing cluster
+
+Template: asha/usenic1
+Type: boolean
+Default: false
+Description: Use eth1 for cluster communication?
+ It appears that your server has more than one NIC.  It is recommended you allow asha to configure the second NIC (eth1)
+ for cluster communications and that you attach the two cluster servers with a direct crossover cable. 
+
+Template: asha/2nanodeip
+Type: string
+Default: 10.0.3.251
+Description: Eth1 IP address of this node?
+ Enter the IP address of Eth1 on this node. This will be used to generate the Eth1 entry
+ in the interfaces file
+
+Template: asha/1nbnodeip
+Type: string
+Default: 192.168.1.252
+Description: Eth0 IP address of the other node?
+ Enter the IP address of the other node.
+ .
+ You only appear to have a single NIC so you should enter the regular ip address of eth0 on the other Node.  
+
+Template: asha/2nbnodeip
+Type: string
+Default: 10.0.3.252
+Description: Eth1 IP address of the other node?
+ Enter the IP address of Eth1 on the other node. This will be used for dedicated comms between
+ the cluster nodes.
+
+Template: asha/bnodename
+Type: string
+Default: sarkb
+Description: Other Node Name?
+ Enter the hostname of the other Node.  This should just be the short
+ name given by 'uname -n'. 
+
+Template: asha/drbddev
+Type: string
+Default: /dev/sda5
+Description: Cluster distributed block device location
+ Enter the location of the DRBD partition.  This should be an empty, unformatted 
+ partition that you created when you installed Debian.  By default it is suggested that 
+ you use the first logical partition (which should be /dev/sda5)
+ If you don't understand this question you should not continue with the installation until you
+ are familiar with partition allocation and usage in *nix systems. 
+
+Template: asha/drbddeverr
+Type: Note
+Description: Cluster distributed block device location <ERROR!>
+ The partition you entered does not exist on this server
+ Try again.
+
+Template: asha/rhinospf
+Type: boolean
+Default: false
+Description:  Have you an installed RHINO SPF card on the primary node?
+ Enter yes if you want the Cluster to support programmed failover of ISDN lines via 
+ a Rhino Equipment Corp Single Port Failover Card.  The card MUST be powered from the Primary,
+ Node.
+
+Template: asha/rhinousb
+Type: string
+Default: /dev/ttyUSB0
+Description:  USB port on which the RHINO SPF is located
+ This will usually be /dev/ttyUSB0 but you can specify a different USB slot here if you wish.
+
+Template: asha/clusteralert
+Type: string
+Default: admin@yourco.com
+Description: Cluster Alert email address
+ Enter an email address which the cluster will use to signal change of state events (such as 
+ failover).
+
+Template: asha/siteid
+Type: string
+Default: yoursitename
+Description: Site Identifier
+ Enter a site identifier string. This will be prepended to the email Subject on cluster alerts to help 
+ easily identify which site is signalling.
+
+Template: asha/done
+Type: note
+Description: ASHA configuration complete
+ ASHA will now generate a set of config files for Pacemaker crm, Corosync, and DRBD.   
+ You will find these configs in /opt/asha/cache and a set of possibly useful scripts in /opt/asha/scripts.  You should inspect each 
+ file carefully to ensure that it is as you wish.
+ .
+ Once you are satisfied you can save the originals and copy the new ones into your system. 
+ You will find further information on the wiki (http://sailpbx.com) in the section on ASHA 2.0.0
+ .
+ The shorewall and eth1 samples have been included for SARK/SAIL users but others may find them useful.
